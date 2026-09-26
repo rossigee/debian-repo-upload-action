@@ -81,16 +81,52 @@ jobs:
           component: main
 ```
 
+### Uploading Multiple Files (Glob Patterns)
+
+Upload all matching `.deb` files from a build:
+
+```yaml
+      - name: Upload all packages
+        uses: rossigee/debian-repo-upload-action@v1
+        with:
+          file: ../build/**/*.deb  # glob pattern
+          base-url: https://debs.example.com
+          token: ${{ secrets.DEBIAN_REPO_TOKEN }}
+          suite: stable
+          component: main
+```
+
+Or use the `files` input for multiple patterns:
+
+```yaml
+      - name: Upload multiple packages
+        uses: rossigee/debian-repo-upload-action@v1
+        with:
+          files: |
+            ../package1_*.deb
+            ../package2_*.deb
+            ../utils_*.deb
+          base-url: https://debs.example.com
+          token: ${{ secrets.DEBIAN_REPO_TOKEN }}
+          suite: stable
+          component: main
+```
+
+**Note:** When uploading multiple files, outputs contain metadata of the **last** uploaded file.
+
 ## Inputs
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `file` | ✅ | | Path to the `.deb` file to upload |
+| `file` | ⚠️* | | Path to a single `.deb` file to upload. Supports glob patterns (e.g., `*.deb`) |
+| `files` | ⚠️* | | Paths to multiple `.deb` files to upload. Space or comma-separated list. Supports glob patterns. Ignored if `file` is set. |
 | `base-url` | ✅ | | Base URL of the debian-repo instance (e.g., `https://debs.myorgname.com`) |
 | `token` | ✅ | | CI bearer token for authentication (store in a GitHub secret) |
 | `suite` | | (server default) | Distribution suite (e.g., `stable`, `testing`, `unstable`) |
 | `component` | | (server default) | Component (e.g., `main`, `contrib`, `non-free`) |
 | `fail-on-error` | | `true` | Whether to fail the step on upload errors (set to `false` to continue on error) |
+
+\* Either `file` or `files` is required (but not both — `file` takes precedence if both are set)
 
 ## Outputs
 
