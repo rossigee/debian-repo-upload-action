@@ -4,8 +4,11 @@ author: Ross Golder
 
 inputs:
   file:
-    description: Path to the .deb file to upload
-    required: true
+    description: Path to a .deb file to upload (single file). Supports glob patterns (e.g., *.deb)
+    required: false
+  files:
+    description: Paths to .deb files to upload (multiple files). Space or comma-separated list. Supports glob patterns. Ignored if 'file' is set.
+    required: false
   base-url:
     description: Base URL of the debian-repo instance (e.g., https://debs.myorgname.com)
     required: true
@@ -48,6 +51,7 @@ runs:
   image: Dockerfile
   args:
     - ${{ inputs.file }}
+    - ${{ inputs.files }}
     - ${{ inputs.base-url }}
     - ${{ inputs.token }}
     - ${{ inputs.suite }}
