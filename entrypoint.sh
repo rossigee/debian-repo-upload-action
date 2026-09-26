@@ -9,66 +9,102 @@ COMPONENT="$5"
 FAIL_ON_ERROR="${6:-true}"
 
 # Mask the token for security
-if command -v echo >/dev/null 2>&1; then
+if [ -n "$GITHUB_OUTPUT" ]; then
   echo "::add-mask::${TOKEN}"
 fi
 
-# Validate inputs
-if [ -z "$FILE" ]; then
-  echo "Error: file input is required"
+# Helper functions
+error() {
+  echo "❌ Error: $*" >&2
   exit 1
-fi
+}
 
-if [ -z "$BASE_URL" ]; then
-  echo "Error: base-url input is required"
-  exit 1
-fi
+warn() {
+  echo "⚠️  Warning: $*" >&2
+}
 
-if [ -z "$TOKEN" ]; then
-  echo "Error: token input is required"
-  exit 1
-fi
+# Validate required inputs
+[ -n "$FILE" ] || error "file input is required"
+[ -n "$BASE_URL" ] || error "base-url input is required"
+[ -n "$TOKEN" ] || error "token input is required"
 
 # Validate file exists
-if [ ! -f "$FILE" ]; then
-  echo "Error: file '$FILE' not found"
-  exit 1
+[ -f "$FILE" ] || error "file '$FILE' not found"
+
+# Validate file is readable
+[ -r "$FILE" ] || error "file '$FILE' is not readable"
+
+# Get file size for validation
+FILE_SIZE=$(stat -c%s "$FILE" 2>/dev/null || stat -f%z "$FILE" 2>/dev/null || echo "unknown")
+if [ "$FILE_SIZE" != "unknown" ] && [ "$FILE_SIZE" -gt 536870912 ]; then
+  error "file is too large ($(($FILE_SIZE / 1024 / 1024))MB, max 512MB)"
 fi
+
+# Validate base URL format
+case "$BASE_URL" in
+  https://* | http://*)
+    ;;
+  *)
+    error "base-url must start with http:// or https://"
+    ;;
+esac
+
+# Remove trailing slash from base URL
+BASE_URL="${BASE_URL%/}"
 
 # Build URL with optional query parameters
 URL="${BASE_URL}/api/v1/upload"
-if [ -n "$SUITE" ] && [ -n "$COMPONENT" ]; then
-  URL="${URL}?suite=${SUITE}&component=${COMPONENT}"
-elif [ -n "$SUITE" ]; then
-  URL="${URL}?suite=${SUITE}"
-elif [ -n "$COMPONENT" ]; then
-  URL="${URL}?component=${COMPONENT}"
+QUERY_PARAMS=""
+
+if [ -n "$SUITE" ]; then
+  QUERY_PARAMS="${QUERY_PARAMS}${QUERY_PARAMS:+&}suite=${SUITE}"
+fi
+if [ -n "$COMPONENT" ]; then
+  QUERY_PARAMS="${QUERY_PARAMS}${QUERY_PARAMS:+&}component=${COMPONENT}"
 fi
 
-echo "Uploading $FILE to $URL"
+if [ -n "$QUERY_PARAMS" ]; then
+  URL="${URL}?${QUERY_PARAMS}"
+fi
+
+echo "Uploading $(basename "$FILE") to $URL"
 
 # Upload the package
 RESPONSE=$(mktemp)
+trap "rm -f $RESPONSE" EXIT
+
 HTTP_CODE=$(curl -sS -w '%{http_code}' -o "$RESPONSE" \
   -X POST \
   -H "Authorization: Bearer ${TOKEN}" \
   --data-binary "@${FILE}" \
   "${URL}")
 
-# Handle errors
+# Check for HTTP success
 if [ "$HTTP_CODE" != "200" ]; then
-  echo "Upload failed with HTTP $HTTP_CODE"
+  echo "❌ Upload failed with HTTP $HTTP_CODE" >&2
+
+  # Try to parse error response
   if [ -s "$RESPONSE" ]; then
-    echo "Server response:"
-    cat "$RESPONSE"
+    # Check if it's JSON
+    if jq empty "$RESPONSE" 2>/dev/null; then
+      echo "Server response:" >&2
+      jq . "$RESPONSE" >&2
+    else
+      echo "Server response:" >&2
+      cat "$RESPONSE" >&2
+    fi
   fi
-  rm -f "$RESPONSE"
 
   if [ "$FAIL_ON_ERROR" = "true" ]; then
     exit 1
   else
     exit 0
   fi
+fi
+
+# Verify response is valid JSON and contains expected fields
+if ! jq empty "$RESPONSE" 2>/dev/null; then
+  error "Server returned invalid JSON response"
 fi
 
 # Parse JSON response and extract fields
@@ -79,19 +115,40 @@ FILENAME=$(jq -r '.filename // empty' "$RESPONSE")
 SHA256=$(jq -r '.checksums.sha256 // empty' "$RESPONSE")
 STATUS=$(jq -r '.status // empty' "$RESPONSE")
 
+# Validate required response fields
+[ -n "$PACKAGE" ] || warn "package field missing from response"
+[ -n "$VERSION" ] || warn "version field missing from response"
+[ -n "$ARCHITECTURE" ] || warn "architecture field missing from response"
+[ -n "$FILENAME" ] || warn "filename field missing from response"
+[ -n "$SHA256" ] || warn "sha256 checksum missing from response"
+
+# Validate status is 'registered'
+if [ "$STATUS" != "registered" ]; then
+  warn "expected status 'registered', got '$STATUS'"
+fi
+
 # Write outputs to GITHUB_OUTPUT
 if [ -n "$GITHUB_OUTPUT" ]; then
-  echo "package=${PACKAGE}" >> "$GITHUB_OUTPUT"
-  echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-  echo "architecture=${ARCHITECTURE}" >> "$GITHUB_OUTPUT"
-  echo "filename=${FILENAME}" >> "$GITHUB_OUTPUT"
-  echo "sha256=${SHA256}" >> "$GITHUB_OUTPUT"
-  echo "status=${STATUS}" >> "$GITHUB_OUTPUT"
+  {
+    echo "package=${PACKAGE}"
+    echo "version=${VERSION}"
+    echo "architecture=${ARCHITECTURE}"
+    echo "filename=${FILENAME}"
+    echo "sha256=${SHA256}"
+    echo "status=${STATUS}"
+  } >> "$GITHUB_OUTPUT"
 fi
 
 # Print success message
-echo "✅ Successfully uploaded ${PACKAGE} version ${VERSION} (${ARCHITECTURE})"
-echo "   Location: ${FILENAME}"
-echo "   SHA256: ${SHA256}"
-
-rm -f "$RESPONSE"
+echo ""
+echo "✅ Successfully uploaded ${PACKAGE} ${VERSION}"
+if [ -n "$ARCHITECTURE" ]; then
+  echo "   Architecture: ${ARCHITECTURE}"
+fi
+if [ -n "$FILENAME" ]; then
+  echo "   Location: ${FILENAME}"
+fi
+if [ -n "$SHA256" ]; then
+  echo "   SHA256: ${SHA256}"
+fi
+echo ""
