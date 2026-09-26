@@ -107,6 +107,13 @@ func expandGlobPatterns(file, files string) ([]string, error) {
 	seen := make(map[string]bool)
 
 	if file != "" {
+		// First check if it's a literal file path (not a glob pattern)
+		if _, err := os.Stat(file); err == nil {
+			results = append(results, file)
+			return results, nil
+		}
+
+		// If not a literal file, try as a glob pattern
 		expanded, err := filepath.Glob(file)
 		if err != nil {
 			return nil, fmt.Errorf("invalid glob pattern '%s': %w", file, err)
