@@ -37,7 +37,7 @@ warn() {
 # Get file size for validation
 FILE_SIZE=$(stat -c%s "$FILE" 2>/dev/null || stat -f%z "$FILE" 2>/dev/null || echo "unknown")
 if [ "$FILE_SIZE" != "unknown" ] && [ "$FILE_SIZE" -gt 536870912 ]; then
-  error "file is too large ($(($FILE_SIZE / 1024 / 1024))MB, max 512MB)"
+  error "file is too large ($((FILE_SIZE / 1024 / 1024))MB, max 512MB)"
 fi
 
 # Validate base URL format
@@ -71,7 +71,7 @@ echo "Uploading $(basename "$FILE") to $URL"
 
 # Upload the package
 RESPONSE=$(mktemp)
-trap "rm -f $RESPONSE" EXIT
+trap 'rm -f "$RESPONSE"' EXIT
 
 HTTP_CODE=$(curl -sS -w '%{http_code}' -o "$RESPONSE" \
   -X POST \
