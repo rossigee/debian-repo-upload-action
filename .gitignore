@@ -2,6 +2,7 @@
 *.o
 *.a
 *.so
+debian-repo-upload-action
 
 # Test binaries
 *.test
