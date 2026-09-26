@@ -1,0 +1,55 @@
+name: Upload Debian Package to debian-repo
+description: Upload a .deb package to a debian-repo instance
+author: Ross Golder
+
+inputs:
+  file:
+    description: Path to the .deb file to upload
+    required: true
+  base-url:
+    description: Base URL of the debian-repo instance (e.g., https://debs.myorgname.com)
+    required: true
+  token:
+    description: CI bearer token for authentication
+    required: true
+  suite:
+    description: Distribution suite (e.g., stable, testing). If omitted, uses server default.
+    required: false
+  component:
+    description: Component (e.g., main, contrib). If omitted, uses server default.
+    required: false
+  fail-on-error:
+    description: Whether to fail the step on upload errors
+    required: false
+    default: 'true'
+
+outputs:
+  package:
+    description: Package name from the upload response
+    value: ${{ steps.upload.outputs.package }}
+  version:
+    description: Package version from the upload response
+    value: ${{ steps.upload.outputs.version }}
+  architecture:
+    description: Package architecture from the upload response
+    value: ${{ steps.upload.outputs.architecture }}
+  filename:
+    description: Pool filename from the upload response
+    value: ${{ steps.upload.outputs.filename }}
+  sha256:
+    description: SHA256 checksum of the uploaded package
+    value: ${{ steps.upload.outputs.sha256 }}
+  status:
+    description: Upload status (should be 'registered' on success)
+    value: ${{ steps.upload.outputs.status }}
+
+runs:
+  using: docker
+  image: Dockerfile
+  args:
+    - ${{ inputs.file }}
+    - ${{ inputs.base-url }}
+    - ${{ inputs.token }}
+    - ${{ inputs.suite }}
+    - ${{ inputs.component }}
+    - ${{ inputs.fail-on-error }}

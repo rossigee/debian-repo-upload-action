@@ -1,0 +1,27 @@
+# Binaries
+*.o
+*.a
+*.so
+
+# Test binaries
+*.test
+
+# Output of coverage
+*.out
+
+# Go mod cache
+/vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
