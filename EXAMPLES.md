@@ -224,7 +224,79 @@ jobs:
           component: main
 ```
 
-## Example 6: Error Handling (Continue on Failure)
+## Example 6: Multi-File Upload with `files` Input
+
+Upload multiple packages from different locations using the `files` input.
+
+**File:** `.github/workflows/release.yaml`
+
+```yaml
+name: Build and Release (Multi-File)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build multiple packages
+        run: |
+          dpkg-buildpackage -us -uc
+          cd cli && dpkg-buildpackage -us -uc && cd ..
+          cd server && dpkg-buildpackage -us -uc && cd ..
+
+      - name: Upload all packages
+        uses: rossigee/debian-repo-upload-action@v1.1.0
+        with:
+          files: |
+            ../my-package_*.deb
+            ../cli/*.deb
+            ../server/*.deb
+          base-url: https://debs.example.com
+          token: ${{ secrets.DEBIAN_REPO_TOKEN }}
+          suite: stable
+          component: main
+```
+
+## Example 7: Glob Pattern Matching
+
+Upload all `.deb` files matching a glob pattern.
+
+**File:** `.github/workflows/release.yaml`
+
+```yaml
+name: Build and Release (Glob Pattern)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Debian packages
+        run: dpkg-buildpackage -us -uc
+
+      - name: Upload with glob pattern
+        uses: rossigee/debian-repo-upload-action@v1.1.0
+        with:
+          file: ../my-*.deb
+          base-url: https://debs.example.com
+          token: ${{ secrets.DEBIAN_REPO_TOKEN }}
+          suite: stable
+          component: main
+```
+
+## Example 8: Error Handling (Continue on Failure)
 
 Allow the workflow to continue even if the upload fails (useful for non-critical uploads).
 
