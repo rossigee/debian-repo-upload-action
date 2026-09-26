@@ -4,8 +4,7 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - master
+  workflow_dispatch:
 
 jobs:
   build:
@@ -26,14 +25,9 @@ jobs:
       - name: Extract version from tag
         id: meta
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-            echo "tags=ghcr.io/${{ github.repository }}:${VERSION},ghcr.io/${{ github.repository }}:latest" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=edge" >> "$GITHUB_OUTPUT"
-            echo "tags=ghcr.io/${{ github.repository }}:edge" >> "$GITHUB_OUTPUT"
-          fi
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tags=ghcr.io/${{ github.repository }}:${VERSION},ghcr.io/${{ github.repository }}:latest" >> "$GITHUB_OUTPUT"
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
