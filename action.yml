@@ -52,8 +52,8 @@ runs:
   args:
     - ${{ inputs.file }}
     - ${{ inputs.files }}
-    - ${{ inputs.base-url }}
+    - ${{ inputs['base-url'] }}
     - ${{ inputs.token }}
     - ${{ inputs.suite }}
     - ${{ inputs.component }}
-    - ${{ inputs.fail-on-error }}
+    - ${{ inputs['fail-on-error'] }}
