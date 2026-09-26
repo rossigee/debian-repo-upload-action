@@ -28,36 +28,33 @@ type UploadResponse struct {
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "debian-repo-upload-action %s\n\n", version)
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s <file|files> <base-url> <token> [suite] [component] [fail-on-error]\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s <file> <files> <base-url> <token> [suite] [component] [fail-on-error]\n", os.Args[0])
 	}
 
 	flag.Parse()
 	args := flag.Args()
 
-	if len(args) < 3 {
+	if len(args) < 4 {
 		flag.Usage()
 		os.Exit(1)
 	}
 
 	fileArg := args[0]
-	filesArg := ""
-	if len(args) > 0 && args[0] != "" {
-		filesArg = ""
-	}
-	baseURL := args[1]
-	token := args[2]
+	filesArg := args[1]
+	baseURL := args[2]
+	token := args[3]
 	suite := ""
 	component := ""
 	failOnError := "true"
 
-	if len(args) > 3 {
-		suite = args[3]
-	}
 	if len(args) > 4 {
-		component = args[4]
+		suite = args[4]
 	}
 	if len(args) > 5 {
-		failOnError = args[5]
+		component = args[5]
+	}
+	if len(args) > 6 {
+		failOnError = args[6]
 	}
 
 	// Validate inputs
